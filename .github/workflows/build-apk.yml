@@ -43,6 +43,24 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Configure Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          SDKMANAGER=$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager -print -quit)
+          if [ -z "$SDKMANAGER" ]; then
+            echo "ERROR: sdkmanager was not found under $SDK_ROOT"
+            find "$SDK_ROOT" -maxdepth 4 -type f | head -100
+            exit 1
+          fi
+          SDKMANAGER_DIR=$(dirname "$SDKMANAGER")
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "$SDKMANAGER_DIR" >> "$GITHUB_PATH"
+          echo "$SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
+          echo "Using Android SDK at $SDK_ROOT"
+          echo "Using sdkmanager at $SDKMANAGER"
+
       - name: Accept Android SDK licenses
         shell: bash
         run: yes | sdkmanager --licenses >/dev/null || true
