@@ -15,25 +15,27 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Find and extract source ZIP
+      - name: Extract Android source ZIP
         shell: bash
         run: |
           set -euo pipefail
           ZIP=$(find . -maxdepth 1 -type f -iname '*.zip' -print -quit)
           if [ -z "$ZIP" ]; then
-            echo 'ERROR: No source ZIP found in repository root.'
+            echo 'ERROR: No ZIP file found in repository root.'
             exit 1
           fi
           mkdir -p source
           unzip -q "$ZIP" -d source
           SETTINGS=$(find source -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print -quit)
           if [ -z "$SETTINGS" ]; then
-            echo 'ERROR: Could not find settings.gradle or settings.gradle.kts in the ZIP.'
-            find source -maxdepth 3 -type f | head -80
+            echo 'ERROR: No settings.gradle found in extracted source.'
+            find source -maxdepth 4 -type f | head -100
             exit 1
           fi
-          echo "PROJECT_DIR=$(dirname "$SETTINGS")" >> "$GITHUB_ENV"
-          echo "Found project at $(dirname "$SETTINGS")"
+          PROJECT_DIR=$(dirname "$SETTINGS")
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+          echo "Project directory: $PROJECT_DIR"
+          ls -la "$PROJECT_DIR"
 
       - name: Set up Java
         uses: actions/setup-java@v5
@@ -41,19 +43,20 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Install Android SDK
+      - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: 'platforms;android-35,build-tools;35.0.0'
+          log-accepted-android-sdk-licenses: false
 
-      - name: Install Android platform and build tools
-        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
-
-      - name: Install Gradle
+      - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
 
       - name: Build debug APK
-        run: gradle -p "$PROJECT_DIR" assembleDebug
+        shell: bash
+        run: gradle -p "$PROJECT_DIR" assembleDebug --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
