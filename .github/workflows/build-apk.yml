@@ -37,6 +37,29 @@ jobs:
           echo "Project directory: $PROJECT_DIR"
           ls -la "$PROJECT_DIR"
 
+      - name: Download offline speech models
+        shell: bash
+        run: |
+          set -euo pipefail
+          ASSET_DIR="$PROJECT_DIR/app/src/main/assets"
+          mkdir -p "$ASSET_DIR"
+          declare -A MODELS=(
+            [model-en]='https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip'
+            [model-ja]='https://alphacephei.com/vosk/models/vosk-model-small-ja-0.22.zip'
+            [model-cn]='https://alphacephei.com/vosk/models/vosk-model-small-cn-0.22.zip'
+          )
+          for target in "${!MODELS[@]}"; do
+            archive="/tmp/${target}.zip"
+            work="/tmp/${target}-unpacked"
+            rm -rf "$work" "$ASSET_DIR/$target"
+            curl --fail --location --retry 3 "${MODELS[$target]}" -o "$archive"
+            mkdir -p "$work"
+            unzip -q "$archive" -d "$work"
+            source_dir=$(find "$work" -mindepth 1 -maxdepth 1 -type d -print -quit)
+            mv "$source_dir" "$ASSET_DIR/$target"
+          done
+          du -sh "$ASSET_DIR"/*
+
       - name: Set up Java
         uses: actions/setup-java@v5
         with:
